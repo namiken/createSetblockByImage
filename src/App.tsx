@@ -157,6 +157,7 @@ const ImageToDotConverter = () => {
     setCoordinates(chunks);
   };
 
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setShowToast(true);
