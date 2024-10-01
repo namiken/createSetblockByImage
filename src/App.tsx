@@ -143,7 +143,7 @@ const ImageToDotConverter = () => {
     let currentChunk = '';
 
     formattedCoordinates.split(' & ').forEach(coord => {
-      if ((currentChunk.length + coord.length + 3) > 10000) {
+      if ((currentChunk.length + coord.length + 3) > 25000) {
         chunks.push(currentChunk.trim());
         currentChunk = '';
       }
