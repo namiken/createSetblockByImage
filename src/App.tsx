@@ -51,10 +51,10 @@ const ImageToDotConverter = () => {
     let scaledWidth, scaledHeight;
     if (aspectRatio > 1) {
       scaledWidth = canvasSize;
-      scaledHeight = canvasSize / aspectRatio;
+      scaledHeight = Math.floor(canvasSize / aspectRatio);
     } else {
       scaledHeight = canvasSize;
-      scaledWidth = canvasSize * aspectRatio;
+      scaledWidth = Math.floor(canvasSize * aspectRatio);
     }
 
     ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
