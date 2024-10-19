@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 
+// 画像をドットに変換するコンポーネント
 const ImageToDotConverter = () => {
+  // ステートの初期化：画像のドットバージョン、しきい値、ピクセル数、オリジナル画像、座標リスト、キャンバス、トースト表示フラグ
   const [dotImage, setDotImage] = useState<string | null>(null);
   const [threshold, setThreshold] = useState<number>(128);
   const [pixelCount, setPixelCount] = useState<number>(100);
@@ -9,7 +11,7 @@ const ImageToDotConverter = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showToast, setShowToast] = useState<boolean>(false);
 
-
+  // 画像アップロード時に呼び出されるハンドラー
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -17,8 +19,10 @@ const ImageToDotConverter = () => {
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
+          // アップロードした画像をステートに保存し、ドット変換を行う
           setOriginalImage(img);
           convertToDots(img, threshold, pixelCount);
+          setCoordinates([]);
         };
         img.src = e.target?.result as string;
       };
@@ -26,16 +30,19 @@ const ImageToDotConverter = () => {
     }
   };
 
+  // しきい値が変更されたときに呼び出されるハンドラー
   const handleThresholdChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newThreshold = parseInt(event.target.value);
     setThreshold(newThreshold);
   };
 
+  // ピクセル数が変更されたときに呼び出されるハンドラー
   const handlePixelCountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const newPixelCount = parseInt(event.target.value);
     setPixelCount(newPixelCount);
   };
 
+  // 画像をドットに変換する関数
   const convertToDots = (img: HTMLImageElement, threshold: number, pixelCount: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -47,6 +54,7 @@ const ImageToDotConverter = () => {
     canvas.width = canvasSize;
     canvas.height = canvasSize;
 
+    // 画像のアスペクト比を維持しつつスケーリング
     const aspectRatio = img.width / img.height;
     let scaledWidth, scaledHeight;
     if (aspectRatio > 1) {
@@ -57,10 +65,12 @@ const ImageToDotConverter = () => {
       scaledWidth = Math.floor(canvasSize * aspectRatio);
     }
 
+    // 画像をキャンバスに描画
     ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
     const imageData = ctx.getImageData(0, 0, scaledWidth, scaledHeight);
     const data = imageData.data;
 
+    // ドットに変換するための別のキャンバスを作成
     const dotCanvas = document.createElement('canvas');
     dotCanvas.width = pixelCount;
     dotCanvas.height = pixelCount;
@@ -70,6 +80,7 @@ const ImageToDotConverter = () => {
     const dotImageData = dotCtx.createImageData(pixelCount, pixelCount);
     const dotData = dotImageData.data;
 
+    // ピクセル単位でグレースケールに変換し、しきい値に基づいて白黒にする
     const scaleX = scaledWidth / pixelCount;
     const scaleY = scaledHeight / pixelCount;
 
@@ -92,6 +103,7 @@ const ImageToDotConverter = () => {
           }
         }
 
+        // ピクセルの平均色を計算し、グレースケール化
         const avgR = totalR / count;
         const avgG = totalG / count;
         const avgB = totalB / count;
@@ -101,49 +113,118 @@ const ImageToDotConverter = () => {
 
         const dotIndex = (y * pixelCount + x) * 4;
         dotData[dotIndex] = dotData[dotIndex + 1] = dotData[dotIndex + 2] = color;
-        dotData[dotIndex + 3] = 255;
+        dotData[dotIndex + 3] = 255; // 透明度をセット
       }
     }
 
+    // ドットイメージデータをキャンバスに描画
     dotCtx.putImageData(dotImageData, 0, 0);
 
+    // キャンバスを更新
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, canvasSize, canvasSize);
     ctx.drawImage(dotCanvas, 0, 0, pixelCount, pixelCount, 0, 0, canvasSize, canvasSize);
 
+    // ドット画像を状態にセット
     setDotImage(canvas.toDataURL());
   };
 
-  const generateCoordinates = () => {
+  const canvasToDots = () => {
+
+    const img = originalImage;
+    if (!img) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const canvasSize = 250;
+    canvas.width = canvasSize;
+    canvas.height = canvasSize;
+
+    // 画像のアスペクト比を維持しつつスケーリング
+    const aspectRatio = img.width / img.height;
+    let scaledWidth, scaledHeight;
+    if (aspectRatio > 1) {
+      scaledWidth = canvasSize;
+      scaledHeight = Math.floor(canvasSize / aspectRatio);
+    } else {
+      scaledHeight = canvasSize;
+      scaledWidth = Math.floor(canvasSize * aspectRatio);
+    }
+
+    // 画像をキャンバスに描画
+    ctx.drawImage(img, 0, 0, scaledWidth, scaledHeight);
+    const imageData = ctx.getImageData(0, 0, scaledWidth, scaledHeight);
     const data = imageData.data;
 
-    const center = Math.floor(pixelCount / 2);
-    const whiteCoordinates: string[] = [];
+    // ドットに変換するための別のキャンバスを作成
+    const dotCanvas = document.createElement('canvas');
+    dotCanvas.width = pixelCount;
+    dotCanvas.height = pixelCount;
+    const dotCtx = dotCanvas.getContext('2d');
+    if (!dotCtx) return;
+
+    // ピクセル単位でグレースケールに変換し、しきい値に基づいて白黒にする
+    const scaleX = scaledWidth / pixelCount;
+    const scaleY = scaledHeight / pixelCount;
+
+    const dots: { x: number, y: number }[] = [];
 
     for (let y = 0; y < pixelCount; y++) {
       for (let x = 0; x < pixelCount; x++) {
-        const i = (y * pixelCount + x) * 4;
-        if (data[i] === 255) {  // White pixel
-          const relX = x - center;
-          const relZ = y - center;
-          whiteCoordinates.push(`~${relX} ~ ~${relZ}`);
+        let totalR = 0, totalG = 0, totalB = 0;
+        let count = 0;
+
+        for (let dy = 0; dy < scaleY; dy++) {
+          for (let dx = 0; dx < scaleX; dx++) {
+            const sx = Math.floor(x * scaleX + dx);
+            const sy = Math.floor(y * scaleY + dy);
+            if (sx < scaledWidth && sy < scaledHeight) {
+              const i = (sy * scaledWidth + sx) * 4;
+              totalR += data[i];
+              totalG += data[i + 1];
+              totalB += data[i + 2];
+              count++;
+            }
+          }
+        }
+
+        // ピクセルの平均色を計算し、グレースケール化
+        const avgR = totalR / count;
+        const avgG = totalG / count;
+        const avgB = totalB / count;
+
+        const gray = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
+        const color = gray > threshold ? 255 : 0;
+
+        if (color === 0) {
+          dots.push({ x, y });
         }
       }
     }
+    console.log(dots);
+    return dots;
 
-    const formattedCoordinates = whiteCoordinates.join(' & ');
+  };
+
+  // ドット画像の白いピクセルの座標を生成する関数
+  const generateCoordinates = () => {
+    const points = canvasToDots();
+
+    if (!points?.length) {
+      return;
+    }
+
+    // 座標リストを大きな文字列として整形し、分割
+    const formattedCoordinates = points?.map(({ x, y }) => `~${x - Math.floor(pixelCount / 2)} ~-1 ~${y - Math.floor(pixelCount / 2)}`).join(' & ');
     const chunks = [];
     let currentChunk = '';
 
     formattedCoordinates.split(' & ').forEach(coord => {
-      if ((currentChunk.length + coord.length + 3) > 25000) {
+      if ((currentChunk.length + coord.length + 3) > 15000) {
         chunks.push(currentChunk.trim());
         currentChunk = '';
       }
@@ -154,10 +235,11 @@ const ImageToDotConverter = () => {
       chunks.push(currentChunk.trim());
     }
 
+    // 座標リストを状態にセット
     setCoordinates(chunks);
   };
 
-
+  // クリップボードにテキストをコピーする関数
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setShowToast(true);
@@ -167,6 +249,7 @@ const ImageToDotConverter = () => {
     });
   };
 
+  // しきい値やピクセル数、画像が変更されたら再度ドットに変換
   useEffect(() => {
     if (originalImage) {
       convertToDots(originalImage, threshold, pixelCount);
@@ -225,7 +308,7 @@ const ImageToDotConverter = () => {
             onClick={generateCoordinates}
             className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
           >
-            Generate Coordinates
+            座標を出力
           </button>
           {coordinates.map((chunk, index) => (
             <div key={index} className="w-full max-w-2xl mb-4">
