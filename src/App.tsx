@@ -12,6 +12,8 @@ const ImageToDotConverter = () => {
   const [showToast, setShowToast] = useState<boolean>(false);
   const [prefix, setPrefix] = useState<string>("sequence_setblock 0 1");
   const [middle, setMiddle] = useState<string>("~-1");
+  const [tempPrefix, setTempPrefix] = useState<string>(prefix);
+  const [tempMiddle, setTempMiddle] = useState<string>(middle);
   const [showCustomization, setShowCustomization] = useState<boolean>(false);
   const [invertColors, setInvertColors] = useState<boolean>(false);
 
@@ -219,7 +221,7 @@ const ImageToDotConverter = () => {
   };
 
   // ドット画像の白いピクセルの座標を生成する関数
-  const generateCoordinates = () => {
+  const generateCoordinates = (prefix: string, middle: string) => {
     const points = canvasToDots();
 
     if (!points?.length) {
@@ -259,6 +261,17 @@ const ImageToDotConverter = () => {
     });
   };
 
+
+  const handlePrefixConfirm = () => {
+    setPrefix(tempPrefix);
+    generateCoordinates(tempPrefix, middle);
+  };
+
+  const handleMiddleConfirm = () => {
+    setMiddle(tempMiddle);
+    generateCoordinates(prefix, tempMiddle);
+  };
+
   // しきい値やピクセル数、画像が変更されたら再度ドットに変換
   useEffect(() => {
     if (originalImage) {
@@ -266,10 +279,10 @@ const ImageToDotConverter = () => {
 
       if (showCustomization) {
         //座標を生成済みの場合は、再生成する
-        generateCoordinates();
+        generateCoordinates(prefix, middle);
       }
     }
-  }, [threshold, pixelCount, originalImage, invertColors]);
+  }, [originalImage, invertColors]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
@@ -321,8 +334,8 @@ const ImageToDotConverter = () => {
           </div>
           <div className="flex items-center mb-4">
             <button
-              onClick={generateCoordinates}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-4"
+              onClick={() => generateCoordinates(prefix, middle)}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-8 rounded mr-4"
             >
               座標を出力
             </button>
@@ -340,25 +353,41 @@ const ImageToDotConverter = () => {
             <div className="w-full max-w-2xl mb-4">
               <div className="flex flex-col mb-2">
                 <label htmlFor="prefix" className="text-sm font-medium text-gray-700">コマンドの先頭:</label>
-                <input
-                  type="text"
-                  id="prefix"
-                  value={prefix}
-                  onChange={(e) => setPrefix(e.target.value)}
-                  onBlur={generateCoordinates}
-                  className="mt-1 p-2 border rounded"
-                />
+                <div className="flex">
+                  <input
+                    type="text"
+                    id="prefix"
+                    value={tempPrefix}
+                    onChange={(e) => setTempPrefix(e.target.value)}
+                    className="mt-1 p-2 border rounded flex-grow"
+                  />
+                  <button
+                    onClick={handlePrefixConfirm}
+                    className="ml-2 bg-blue-500 text-white font-bold py-2 px-4 rounded transition-colors duration-300 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                    disabled={tempPrefix === prefix}
+                  >
+                    確定
+                  </button>
+                </div>
               </div>
               <div className="flex flex-col mb-2">
                 <label htmlFor="middle" className="text-sm font-medium text-gray-700">Y座標:</label>
-                <input
-                  type="text"
-                  id="middle"
-                  value={middle}
-                  onChange={(e) => setMiddle(e.target.value)}
-                  onBlur={generateCoordinates}
-                  className="mt-1 p-2 border rounded"
-                />
+                <div className="flex">
+                  <input
+                    type="text"
+                    id="middle"
+                    value={tempMiddle}
+                    onChange={(e) => setTempMiddle(e.target.value)}
+                    className="mt-1 p-2 border rounded flex-grow"
+                  />
+                  <button
+                    onClick={handleMiddleConfirm}
+                    disabled={tempMiddle === middle}
+                    className="ml-2 bg-blue-500 text-white font-bold py-2 px-4 rounded transition-colors duration-300 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                  >
+                    確定
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -371,7 +400,7 @@ const ImageToDotConverter = () => {
               />
               <button
                 onClick={() => copyToClipboard(chunk)}
-                className="mt-2 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                className="mb-1 bg-green-500 hover:bg-green-700 text-white font-bold py-1 px-3 rounded text-sm"
               >
                 Copy to Clipboard
               </button>
