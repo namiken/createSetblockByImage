@@ -10,6 +10,11 @@ const ImageToDotConverter = () => {
   const [coordinates, setCoordinates] = useState<string[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showToast, setShowToast] = useState<boolean>(false);
+  const [prefix, setPrefix] = useState<string>("sequence_setblock 0 1");
+  const [middle, setMiddle] = useState<string>("~-1");
+  const [showCustomization, setShowCustomization] = useState<boolean>(false);
+  const [invertColors, setInvertColors] = useState<boolean>(false);
+
 
   // 画像アップロード時に呼び出されるハンドラー
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -23,6 +28,8 @@ const ImageToDotConverter = () => {
           setOriginalImage(img);
           convertToDots(img, threshold, pixelCount);
           setCoordinates([]);
+          setShowCustomization(false);
+          setInvertColors(false);
         };
         img.src = e.target?.result as string;
       };
@@ -44,6 +51,7 @@ const ImageToDotConverter = () => {
 
   // 画像をドットに変換する関数
   const convertToDots = (img: HTMLImageElement, threshold: number, pixelCount: number) => {
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -109,7 +117,7 @@ const ImageToDotConverter = () => {
         const avgB = totalB / count;
 
         const gray = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
-        const color = gray > threshold ? 255 : 0;
+        const color = invertColors ? (gray <= threshold ? 255 : 0) : (gray > threshold ? 255 : 0);
 
         const dotIndex = (y * pixelCount + x) * 4;
         dotData[dotIndex] = dotData[dotIndex + 1] = dotData[dotIndex + 2] = color;
@@ -127,6 +135,7 @@ const ImageToDotConverter = () => {
 
     // ドット画像を状態にセット
     setDotImage(canvas.toDataURL());
+
   };
 
   const canvasToDots = () => {
@@ -198,14 +207,13 @@ const ImageToDotConverter = () => {
         const avgB = totalB / count;
 
         const gray = 0.299 * avgR + 0.587 * avgG + 0.114 * avgB;
-        const color = gray > threshold ? 255 : 0;
+        const color = invertColors ? (gray <= threshold ? 255 : 0) : (gray > threshold ? 255 : 0);
 
         if (color === 0) {
           dots.push({ x, y });
         }
       }
     }
-    console.log(dots);
     return dots;
 
   };
@@ -219,7 +227,7 @@ const ImageToDotConverter = () => {
     }
 
     // 座標リストを大きな文字列として整形し、分割
-    const formattedCoordinates = points?.map(({ x, y }) => `~${x - Math.floor(pixelCount / 2)} ~-1 ~${y - Math.floor(pixelCount / 2)}`).join(' & ');
+    const formattedCoordinates = points?.map(({ x, y }) => `~${x - Math.floor(pixelCount / 2)} ${middle} ~${y - Math.floor(pixelCount / 2)}`).join(' & ');
     const chunks = [];
     let currentChunk = '';
 
@@ -235,8 +243,10 @@ const ImageToDotConverter = () => {
       chunks.push(currentChunk.trim());
     }
 
+
     // 座標リストを状態にセット
-    setCoordinates(chunks);
+    setCoordinates(chunks.map(chunk => prefix + " " + chunk));
+    setShowCustomization(true);
   };
 
   // クリップボードにテキストをコピーする関数
@@ -253,8 +263,13 @@ const ImageToDotConverter = () => {
   useEffect(() => {
     if (originalImage) {
       convertToDots(originalImage, threshold, pixelCount);
+
+      if (showCustomization) {
+        //座標を生成済みの場合は、再生成する
+        generateCoordinates();
+      }
     }
-  }, [threshold, pixelCount, originalImage]);
+  }, [threshold, pixelCount, originalImage, invertColors]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
@@ -304,12 +319,49 @@ const ImageToDotConverter = () => {
               className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
             />
           </div>
-          <button
-            onClick={generateCoordinates}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4"
-          >
-            座標を出力
-          </button>
+          <div className="flex items-center mb-4">
+            <button
+              onClick={generateCoordinates}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mr-4"
+            >
+              座標を出力
+            </button>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={invertColors}
+                onChange={(e) => setInvertColors(e.target.checked)}
+                className="form-checkbox h-5 w-5 text-blue-600"
+              />
+              <span className="ml-2 text-gray-700">色を反転</span>
+            </label>
+          </div>
+          {showCustomization && (
+            <div className="w-full max-w-2xl mb-4">
+              <div className="flex flex-col mb-2">
+                <label htmlFor="prefix" className="text-sm font-medium text-gray-700">コマンドの先頭:</label>
+                <input
+                  type="text"
+                  id="prefix"
+                  value={prefix}
+                  onChange={(e) => setPrefix(e.target.value)}
+                  onBlur={generateCoordinates}
+                  className="mt-1 p-2 border rounded"
+                />
+              </div>
+              <div className="flex flex-col mb-2">
+                <label htmlFor="middle" className="text-sm font-medium text-gray-700">Y座標:</label>
+                <input
+                  type="text"
+                  id="middle"
+                  value={middle}
+                  onChange={(e) => setMiddle(e.target.value)}
+                  onBlur={generateCoordinates}
+                  className="mt-1 p-2 border rounded"
+                />
+              </div>
+            </div>
+          )}
           {coordinates.map((chunk, index) => (
             <div key={index} className="w-full max-w-2xl mb-4">
               <textarea
