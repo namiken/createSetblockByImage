@@ -272,17 +272,12 @@ const ImageToDotConverter = () => {
     generateCoordinates(prefix, tempMiddle);
   };
 
-  // しきい値やピクセル数、画像が変更されたら再度ドットに変換
+  //画像を更新
   useEffect(() => {
     if (originalImage) {
       convertToDots(originalImage, threshold, pixelCount);
-
-      if (showCustomization) {
-        //座標を生成済みの場合は、再生成する
-        generateCoordinates(prefix, middle);
-      }
     }
-  }, [originalImage, invertColors]);
+  }, [pixelCount, threshold, originalImage, invertColors]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
